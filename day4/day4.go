@@ -20,7 +20,9 @@ func (c code) valid() bool {
 	two := false
 	for i := 1; i < 6; i++ {
 		if c[i] == prev {
-			two = true
+			if i < 5 && c[i+1] != c[i] {
+				two = true
+			}
 		}
 		if c[i] < prev {
 			return false
@@ -33,12 +35,12 @@ func (c code) valid() bool {
 func main() {
 	c := code{2, 3, 1, 8, 3, 2}
 	n := 0
-	for i := 0; i < 767346-231832; i++ {
-		c.inc()
+	for i := 0; i < 767346-231832+1; i++ {
 		if c.valid() {
 			fmt.Println(c)
 			n++
 		}
+		c.inc()
 	}
 	fmt.Println(n)
 }
