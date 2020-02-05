@@ -37,53 +37,65 @@ func main() {
 	}
 
 	const size = 40000
-	grid := make([][]byte, size)
+	type cell [2]uint32
+	grid := make([][]cell, size)
 	for y := range grid {
-		grid[y] = make([]byte, size)
+		grid[y] = make([]cell, size)
 	}
 	origX, origY := size/2, size/2
 
 	for wire, path := range paths {
-		wire := uint(wire)
+		step := uint32(0)
 		x, y := origX, origY
+		inc := func() {
+			step++
+			if grid[y][x][wire] != 0 {
+				return
+			}
+			if step == 0 {
+				fmt.Printf("overflow x=%d y=%d\n", x, y)
+			}
+			grid[y][x][wire] = step
+		}
 		for _, m := range path {
 			switch m.dir {
 			case 'U':
 				for i := 0; i < m.count; i++ {
 					y++
-					grid[y][x] |= 1 << wire
+					inc()
 				}
 			case 'D':
 				for i := 0; i < m.count; i++ {
 					y--
-					grid[y][x] |= 1 << wire
+					inc()
 				}
 			case 'L':
 				for i := 0; i < m.count; i++ {
 					x--
-					grid[y][x] |= 1 << wire
+					inc()
 				}
 			case 'R':
 				for i := 0; i < m.count; i++ {
 					x++
-					grid[y][x] |= 1 << wire
+					inc()
 				}
 			}
 		}
 	}
 
-	var lowX, lowY, lowDist int
+	var lowX, lowY, lowSteps int
 	for y := range grid {
 		for x := range grid[y] {
-			if grid[y][x] == 3 {
-				dist := abs(origX-x) + abs(origY-y)
-				if lowDist == 0 || lowDist > dist {
-					lowX, lowY, lowDist = x, y, dist
+			c := grid[y][x]
+			if c[0] > 0 && c[1] > 0 {
+				steps := c[0] + c[1]
+				if lowSteps == 0 || lowSteps > int(steps) {
+					lowX, lowY, lowSteps = x, y, int(steps)
 				}
 			}
 		}
 	}
-	fmt.Printf("x=%d y=%d dist=%d\n", lowX, lowY, lowDist)
+	fmt.Printf("x=%d y=%d steps=%d\n", lowX, lowY, lowSteps)
 }
 
 func abs(a int) int {
