@@ -16,18 +16,23 @@ func (c *code) inc() {
 }
 
 func (c code) valid() bool {
-	prev := c[0]
 	two := false
+	runLen := 1
 	for i := 1; i < 6; i++ {
-		if c[i] == prev {
-			if i < 5 && c[i+1] != c[i] {
+		if c[i] == c[i-1] {
+			runLen++
+		} else {
+			if runLen == 2 {
 				two = true
 			}
+			runLen = 1
 		}
-		if c[i] < prev {
+		if c[i] < c[i-1] {
 			return false
 		}
-		prev = c[i]
+	}
+	if runLen == 2 {
+		return true
 	}
 	return two
 }
@@ -37,7 +42,6 @@ func main() {
 	n := 0
 	for i := 0; i < 767346-231832+1; i++ {
 		if c.valid() {
-			fmt.Println(c)
 			n++
 		}
 		c.inc()
