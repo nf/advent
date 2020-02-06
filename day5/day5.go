@@ -14,7 +14,7 @@ func main() {
 	}
 	var mem []int
 	for _, s := range strings.Split(string(b), ",") {
-		n, err := strconv.Atoi(s)
+		n, err := strconv.Atoi(strings.TrimSpace(s))
 		if err != nil {
 			panic(err)
 		}
@@ -76,6 +76,32 @@ func compute(mem []int) int {
 		case 4: // output
 			fmt.Printf("ouput: %d\n", load(pc+1, 0))
 			pc += 2
+		case 5: // jump-if-true
+			if load(pc+1, 0) != 0 {
+				pc = load(pc+2, 1)
+			} else {
+				pc += 3
+			}
+		case 6: // jump-if-false
+			if load(pc+1, 0) == 0 {
+				pc = load(pc+2, 1)
+			} else {
+				pc += 3
+			}
+		case 7: // less than
+			if load(pc+1, 0) < load(pc+2, 1) {
+				mem[mem[pc+3]] = 1
+			} else {
+				mem[mem[pc+3]] = 0
+			}
+			pc += 4
+		case 8: // equals
+			if load(pc+1, 0) == load(pc+2, 1) {
+				mem[mem[pc+3]] = 1
+			} else {
+				mem[mem[pc+3]] = 0
+			}
+			pc += 4
 		case 99: // quit
 			return mem[0]
 		default:
