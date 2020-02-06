@@ -48,60 +48,66 @@ func compute(mem []int) int {
 			modeFlags /= 10
 		}
 
-		load := func(addr, argN int) int {
+		//log.Printf("pc=%d mem[pc]=%d opcode=%d modes=%d", pc, mem[pc], opcode, modes)
+		pc++
+
+		//log.Printf("next instructions %v", mem[pc:pc+5])
+
+		argN := 0
+		load := func() (v int) {
+			defer func() {
+				argN++
+				pc++
+			}()
 			switch modes[argN] {
 			case positionMode:
-				return mem[mem[addr]]
+				return mem[mem[pc]]
 			case immediateMode:
-				return mem[addr]
+				return mem[pc]
 			default:
-				panic(fmt.Sprintf("invalid mode %d", modes[argN]))
+				panic(fmt.Sprintf("invalid mode %d at pc %d", modes[argN], pc))
 			}
-
+		}
+		stor := func(v int) {
+			defer func() {
+				argN++
+				pc++
+			}()
+			mem[mem[pc]] = v
 		}
 
 		switch opcode {
 		case 1: // add
-			mem[mem[pc+3]] = load(pc+1, 0) + load(pc+2, 1)
-			pc += 4
+			stor(load() + load())
 		case 2: // mul
-			mem[mem[pc+3]] = load(pc+1, 0) * load(pc+2, 1)
-			pc += 4
+			stor(load() * load())
 		case 3: // input
 			fmt.Printf("input: ")
 			var v int
 			fmt.Scan(&v)
-			mem[mem[pc+1]] = v
-			pc += 2
+			stor(v)
 		case 4: // output
-			fmt.Printf("ouput: %d\n", load(pc+1, 0))
-			pc += 2
+			fmt.Printf("output: %d\n", load())
 		case 5: // jump-if-true
-			if load(pc+1, 0) != 0 {
-				pc = load(pc+2, 1)
-			} else {
-				pc += 3
+			if v, dst := load(), load(); v != 0 {
+				pc = dst
 			}
 		case 6: // jump-if-false
-			if load(pc+1, 0) == 0 {
-				pc = load(pc+2, 1)
-			} else {
-				pc += 3
+			if v, dst := load(), load(); v == 0 {
+				pc = dst
 			}
 		case 7: // less than
-			if load(pc+1, 0) < load(pc+2, 1) {
-				mem[mem[pc+3]] = 1
+			if load() < load() {
+				stor(1)
 			} else {
-				mem[mem[pc+3]] = 0
+				stor(0)
 			}
-			pc += 4
 		case 8: // equals
-			if load(pc+1, 0) == load(pc+2, 1) {
-				mem[mem[pc+3]] = 1
+			if load() == load() {
+				stor(1)
 			} else {
-				mem[mem[pc+3]] = 0
+				stor(0)
 			}
-			pc += 4
 		case 99: // quit
 			return mem[0]
 		default:
