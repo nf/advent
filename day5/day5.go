@@ -30,12 +30,26 @@ type machine struct {
 	pc  int
 	mem []int
 
+	// Reset after each call to opcode.
 	argN  int
 	modes [3]mode
+
+	input  func() int
+	output func(int)
 }
 
 func newMachine(prog string) (*machine, error) {
-	var m machine
+	m := machine{
+		input: func() int {
+			fmt.Printf("input: ")
+			var v int
+			fmt.Scan(&v)
+			return v
+		},
+		output: func(v int) {
+			fmt.Printf("output: %d\n", v)
+		},
+	}
 	for _, s := range strings.Split(prog, ",") {
 		n, err := strconv.Atoi(strings.TrimSpace(s))
 		if err != nil {
@@ -96,12 +110,9 @@ func (m *machine) run() int {
 		case 2: // mul
 			m.stor(m.load() * m.load())
 		case 3: // input
-			fmt.Printf("input: ")
-			var v int
-			fmt.Scan(&v)
-			m.stor(v)
+			m.stor(m.input())
 		case 4: // output
-			fmt.Printf("output: %d\n", m.load())
+			m.output(m.load())
 		case 5: // jump-if-true
 			if v, dst := m.load(), m.load(); v != 0 {
 				m.pc = dst
