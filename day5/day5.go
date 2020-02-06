@@ -12,15 +12,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	var mem []int
-	for _, s := range strings.Split(string(b), ",") {
-		n, err := strconv.Atoi(strings.TrimSpace(s))
-		if err != nil {
-			panic(err)
-		}
-		mem = append(mem, n)
+	m, err := newMachine(string(b))
+	if err != nil {
+		panic(err)
 	}
-	fmt.Printf("result: %d\n", compute(mem))
+	fmt.Printf("result: %d\n", m.run())
 }
 
 type mode byte
@@ -30,86 +26,104 @@ const (
 	immediateMode mode = 1
 )
 
-func compute(mem []int) int {
-	pc := 0
+type machine struct {
+	pc  int
+	mem []int
+
+	argN  int
+	modes [3]mode
+}
+
+func newMachine(prog string) (*machine, error) {
+	var m machine
+	for _, s := range strings.Split(prog, ",") {
+		n, err := strconv.Atoi(strings.TrimSpace(s))
+		if err != nil {
+			return nil, err
+		}
+		m.mem = append(m.mem, n)
+	}
+	return &m, nil
+}
+
+func (m *machine) opcode() int {
+	// eg: 02
+	opcode := m.mem[m.pc] % 100
+
+	// eg: 11100
+	modeFlags := (m.mem[m.pc] - opcode) / 100
+	for i := range m.modes {
+		m.modes[i] = mode(modeFlags % 10)
+		modeFlags /= 10
+	}
+	m.argN = 0
+
+	//log.Printf("pc=%d mem[pc]=%d opcode=%d modes=%d", pc, mem[pc], opcode, modes)
+	m.pc++
+	//log.Printf("next instructions %v", mem[pc:pc+5])
+	return opcode
+}
+
+func (m *machine) load() int {
+	defer func() {
+		m.argN++
+		m.pc++
+	}()
+
+	switch m.modes[m.argN] {
+	case positionMode:
+		return m.mem[m.mem[m.pc]]
+	case immediateMode:
+		return m.mem[m.pc]
+	default:
+		panic(fmt.Sprintf("invalid mode %d at pc %d", m.modes[m.argN], m.pc))
+	}
+}
+
+func (m *machine) stor(v int) {
+	defer func() {
+		m.argN++
+		m.pc++
+	}()
+	m.mem[m.mem[m.pc]] = v
+}
+
+func (m *machine) run() int {
 	for {
-		if pc >= len(mem) {
-			panic(fmt.Sprintf("overrun pc=%d", pc))
-		}
-
-		// eg: 02
-		opcode := mem[pc] % 100
-
-		// eg: 11100
-		modeFlags := (mem[pc] - opcode) / 100
-		var modes [3]mode
-		for i := range modes {
-			modes[i] = mode(modeFlags % 10)
-			modeFlags /= 10
-		}
-
-		//log.Printf("pc=%d mem[pc]=%d opcode=%d modes=%d", pc, mem[pc], opcode, modes)
-		pc++
-
-		//log.Printf("next instructions %v", mem[pc:pc+5])
-
-		argN := 0
-		load := func() (v int) {
-			defer func() {
-				argN++
-				pc++
-			}()
-			switch modes[argN] {
-			case positionMode:
-				return mem[mem[pc]]
-			case immediateMode:
-				return mem[pc]
-			default:
-				panic(fmt.Sprintf("invalid mode %d at pc %d", modes[argN], pc))
-			}
-		}
-		stor := func(v int) {
-			defer func() {
-				argN++
-				pc++
-			}()
-			mem[mem[pc]] = v
-		}
-
-		switch opcode {
+		switch opcode := m.opcode(); opcode {
 		case 1: // add
-			stor(load() + load())
+			m.stor(m.load() + m.load())
 		case 2: // mul
-			stor(load() * load())
+			m.stor(m.load() * m.load())
 		case 3: // input
 			fmt.Printf("input: ")
 			var v int
 			fmt.Scan(&v)
-			stor(v)
+			m.stor(v)
 		case 4: // output
-			fmt.Printf("output: %d\n", load())
+			fmt.Printf("output: %d\n", m.load())
 		case 5: // jump-if-true
-			if v, dst := load(), load(); v != 0 {
-				pc = dst
+			if v, dst := m.load(), m.load(); v != 0 {
+				m.pc = dst
 			}
 		case 6: // jump-if-false
-			if v, dst := load(), load(); v == 0 {
-				pc = dst
+			if v, dst := m.load(), m.load(); v == 0 {
+				m.pc = dst
 			}
 		case 7: // less than
-			if load() < load() {
-				stor(1)
+			if m.load() < m.load() {
+				m.stor(1)
 			} else {
-				stor(0)
+				m.stor(0)
 			}
 		case 8: // equals
-			if load() == load() {
-				stor(1)
+			if m.load() == m.load() {
+				m.stor(1)
 			} else {
-				stor(0)
+				m.stor(0)
 			}
 		case 99: // quit
-			return mem[0]
+			return m.mem[0]
 		default:
 			panic(fmt.Sprintf("unknown opcode=%d", opcode))
 		}
