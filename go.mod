@@ -1,3 +1,3 @@
-module adg.tech/advent
+module github.com/nf/advent
 
 go 1.12
