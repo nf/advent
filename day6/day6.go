@@ -24,17 +24,23 @@ func main() {
 		panic(err)
 	}
 
-	total := 0
-	for name := range nodes {
-		total += orbits(nodes, name)
-	}
-	fmt.Println(total)
-}
-
-func orbits(nodes map[string]string, name string) (n int) {
+	name := "YOU"
+	seen := make(map[string]int)
+	n := 0
 	for name != "COM" {
 		name = nodes[name]
 		n++
+		seen[name] = n
 	}
-	return
+
+	name = "SAN"
+	n = 0
+	for name != "COM" {
+		name = nodes[name]
+		n++
+		if n2 := seen[name]; n2 > 0 {
+			fmt.Println(n, n2, n+n2-2)
+			break
+		}
+	}
 }
