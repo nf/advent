@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func main() {
@@ -18,8 +19,15 @@ func main() {
 		panic(err)
 	}
 
+	phases := permute(5)
+	for _, p := range phases {
+		for j := range p {
+			p[j] += 5
+		}
+	}
+
 	var highSig int
-	for _, phase := range permute(5) {
+	for _, phase := range phases {
 		sig := compute(prog, phase)
 		if sig > highSig {
 			highSig = sig
@@ -46,17 +54,38 @@ func permute(n int) (out [][]int) {
 }
 
 func compute(prog, phase []int) int {
-	in := make(chan int, 2)
-	first := in
-	var out chan int
+	var (
+		in    = make(chan int, 2)
+		first = in
+		out   chan int
+	)
+	var wg sync.WaitGroup
 	for _, ps := range phase {
 		in <- ps
 		out = make(chan int, 2)
-		go newMachine(prog, in, out).run()
+		m := newMachine(prog, in, out)
 		in = out
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			m.run()
+		}()
 	}
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
 	first <- 0 // start computation
-	return <-out
+	for {
+		select {
+		case v := <-out:
+			first <- v
+		case <-done:
+			return <-first
+		}
+	}
 }
 
 type mode byte
